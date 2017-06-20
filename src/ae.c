@@ -64,6 +64,7 @@
     #endif
 #endif
 
+//初始化eventLoop
 aeEventLoop *aeCreateEventLoop(void) {
     aeEventLoop *eventLoop;
     int i;
@@ -86,11 +87,13 @@ aeEventLoop *aeCreateEventLoop(void) {
     return eventLoop;
 }
 
+//释放
 void aeDeleteEventLoop(aeEventLoop *eventLoop) {
     aeApiFree(eventLoop);
     zfree(eventLoop);
 }
 
+//设置停止标记
 void aeStop(aeEventLoop *eventLoop) {
     eventLoop->stop = 1;
 }
@@ -102,12 +105,16 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     if (fd >= AE_SETSIZE) return AE_ERR;
     fe = &eventLoop->events[fd];
 
+	//先调用下层的AddEvent
     if (aeApiAddEvent(eventLoop, fd, mask) == -1)
         return AE_ERR;
+	//把mask保存到本层
     fe->mask |= mask;
+	//保存读写函数和私有数据
     if (mask & AE_READABLE) fe->rfileProc = proc;
     if (mask & AE_WRITABLE) fe->wfileProc = proc;
     fe->clientData = clientData;
+	//记录最大maxfd
     if (fd > eventLoop->maxfd)
         eventLoop->maxfd = fd;
     return AE_OK;
@@ -119,19 +126,25 @@ void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask)
     if (fd >= AE_SETSIZE) return;
     fe = &eventLoop->events[fd];
 
+	//没有事件可删除，不报错，直接返回
     if (fe->mask == AE_NONE) return;
+	//清除mask
     fe->mask = fe->mask & (~mask);
+	//上一步已经清除mask,因此如果此时mask为AE_NONE,则表示当前fd已无需再监听。如果此时的fd为maxfd，则需要找到下一个有效的maxfd
     if (fd == eventLoop->maxfd && fe->mask == AE_NONE) {
         /* Update the max fd */
         int j;
 
+		//从maxfd-1开始递减遍历
         for (j = eventLoop->maxfd-1; j >= 0; j--)
-            if (eventLoop->events[j].mask != AE_NONE) break;
+            if (eventLoop->events[j].mask != AE_NONE) break;//如果不为AE_NONE，则表示找到了此时的maxfd
         eventLoop->maxfd = j;
     }
+	//调用下层的DelEvent
     aeApiDelEvent(eventLoop, fd, mask);
 }
 
+//获取当前时间
 static void aeGetTime(long *seconds, long *milliseconds)
 {
     struct timeval tv;
@@ -141,6 +154,7 @@ static void aeGetTime(long *seconds, long *milliseconds)
     *milliseconds = tv.tv_usec/1000;
 }
 
+//当前时间+毫秒， 返回输出的秒和毫秒
 static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) {
     long cur_sec, cur_ms, when_sec, when_ms;
 
@@ -155,17 +169,23 @@ static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) 
     *ms = when_ms;
 }
 
+//创建一个经过到少毫秒之后要发生的事件
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
         aeTimeProc *proc, void *clientData,
         aeEventFinalizerProc *finalizerProc)
 {
+	//为每个timer分配一个ID, timeEventNextId记录的是下一个可以使用的ID
     long long id = eventLoop->timeEventNextId++;
     aeTimeEvent *te;
 
     te = zmalloc(sizeof(*te));
     if (te == NULL) return AE_ERR;
+	//设置ID
     te->id = id;
+	//计算时间戳
     aeAddMillisecondsToNow(milliseconds,&te->when_sec,&te->when_ms);
+
+	//设置各个成员，并把时间事件加入链表头部
     te->timeProc = proc;
     te->finalizerProc = finalizerProc;
     te->clientData = clientData;
@@ -174,17 +194,21 @@ long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
     return id;
 }
 
+//删除指定ID的Timer
 int aeDeleteTimeEvent(aeEventLoop *eventLoop, long long id)
 {
     aeTimeEvent *te, *prev = NULL;
 
     te = eventLoop->timeEventHead;
+	//遍历真个无需链表，查找指定ID的Timer
     while(te) {
         if (te->id == id) {
+			//从链表中删除
             if (prev == NULL)
                 eventLoop->timeEventHead = te->next;
             else
                 prev->next = te->next;
+			//调用finallizer函数
             if (te->finalizerProc)
                 te->finalizerProc(eventLoop, te->clientData);
             zfree(te);
@@ -207,11 +231,15 @@ int aeDeleteTimeEvent(aeEventLoop *eventLoop, long long id)
  *    Much better but still insertion or deletion of timers is O(N).
  * 2) Use a skiplist to have this operation as O(1) and insertion as O(log(N)).
  */
+
+
+//查找距离当前时间最近的Timer
 static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
 {
     aeTimeEvent *te = eventLoop->timeEventHead;
     aeTimeEvent *nearest = NULL;
 
+	//遍历无序链表，查找最小的时间戳
     while(te) {
         if (!nearest || te->when_sec < nearest->when_sec ||
                 (te->when_sec == nearest->when_sec &&
@@ -228,16 +256,22 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
     aeTimeEvent *te;
     long long maxId;
 
+	//拿到链表头和最大的Timer ID，超过这个ID的Timer是无效的
     te = eventLoop->timeEventHead;
     maxId = eventLoop->timeEventNextId-1;
+
+	//遍历Timer无序链表
     while(te) {
         long now_sec, now_ms;
         long long id;
 
+		//无效ID的Timer直接跳过
         if (te->id > maxId) {
             te = te->next;
             continue;
         }
+
+		//获取当前时间，如果当前时间超过了Timer中的时间戳
         aeGetTime(&now_sec, &now_ms);
         if (now_sec > te->when_sec ||
             (now_sec == te->when_sec && now_ms >= te->when_ms))
@@ -247,8 +281,10 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
 #else
             int retval;
 #endif
+			//Timer到期，调用Timer处理函数
             id = te->id;
             retval = te->timeProc(eventLoop, id, te->clientData);
+			//记录处理了多少个Timer
             processed++;
             /* After an event is processed our time event list may
              * no longer be the same, so we restart from head.
@@ -264,10 +300,13 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
              * deletion (putting references to the nodes to delete into
              * another linked list). */
             if (retval != AE_NOMORE) {
+				//周期性Timer，需要再次设置Timer到期时间
                 aeAddMillisecondsToNow(retval,&te->when_sec,&te->when_ms);
             } else {
+				//单次的Timer，直接删掉该Timer，无序再次处理
                 aeDeleteTimeEvent(eventLoop, id);
             }
+			//设置Timer再从头开始遍历
             te = eventLoop->timeEventHead;
         } else {
             te = te->next;
@@ -294,6 +333,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
     int processed = 0, numevents;
 
     /* Nothing to do? return ASAP */
+	//不处理Timer事件和FILE事件，直接返回
     if (!(flags & AE_TIME_EVENTS) && !(flags & AE_FILE_EVENTS)) return 0;
 
     /* Note that we want call select() even if there are no
@@ -308,6 +348,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 
         if (flags & AE_TIME_EVENTS && !(flags & AE_DONT_WAIT))
             shortest = aeSearchNearestTimer(eventLoop);
+		//查找到最近的Timer,设置epoll超时时间
         if (shortest) {
             long now_sec, now_ms;
 
@@ -324,22 +365,29 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             }
             if (tvp->tv_sec < 0) tvp->tv_sec = 0;
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
+		//没有Timer的情况
         } else {
             /* If we have to check for events but need to return
              * ASAP because of AE_DONT_WAIT we need to se the timeout
              * to zero */
+			//如果设置了AE_DONT_WAIT标记，则设置超时时间为0
             if (flags & AE_DONT_WAIT) {
                 tv.tv_sec = tv.tv_usec = 0;
                 tvp = &tv;
-            } else {
+            } else 
+			//因为没有Timer，并且没有设置DONT_WAIT标记，因此可以一直等待fd事件
+			{
                 /* Otherwise we can block */
                 tvp = NULL; /* wait forever */
             }
         }
 
+		//调用下层的核心Poll函数
         numevents = aeApiPoll(eventLoop, tvp);
+		//依次遍历处理被触发的FILE事件
         for (j = 0; j < numevents; j++) {
             aeFileEvent *fe = &eventLoop->events[eventLoop->fired[j].fd];
+			//获取被触发的fd和mask
             int mask = eventLoop->fired[j].mask;
             int fd = eventLoop->fired[j].fd;
             int rfired = 0;

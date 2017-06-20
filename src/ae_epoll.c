@@ -4,11 +4,13 @@
 
 #include <sys/epoll.h>
 
+//epoll 内部私有结构
 typedef struct aeApiState {
     int epfd;
     struct epoll_event events[AE_SETSIZE];
 } aeApiState;
 
+//epoll申请私有空间，初始化
 static int aeApiCreate(aeEventLoop *eventLoop) {
     aeApiState *state = zmalloc(sizeof(aeApiState));
 
@@ -19,6 +21,7 @@ static int aeApiCreate(aeEventLoop *eventLoop) {
     return 0;
 }
 
+//释放
 static void aeApiFree(aeEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
@@ -26,15 +29,18 @@ static void aeApiFree(aeEventLoop *eventLoop) {
     zfree(state);
 }
 
+//设置特定fd的读写事件，可添加或者修改
 static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     struct epoll_event ee;
     /* If the fd was already monitored for some event, we need a MOD
      * operation. Otherwise we need an ADD operation. */
+	//判断是添加还是修改
     int op = eventLoop->events[fd].mask == AE_NONE ?
             EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
     ee.events = 0;
+	//设置读写事件
     mask |= eventLoop->events[fd].mask; /* Merge old events */
     if (mask & AE_READABLE) ee.events |= EPOLLIN;
     if (mask & AE_WRITABLE) ee.events |= EPOLLOUT;
@@ -47,6 +53,8 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
 static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     aeApiState *state = eventLoop->apidata;
     struct epoll_event ee;
+
+	//其实mask在上层已经被干掉一次了,再来一次无用途
     int mask = eventLoop->events[fd].mask & (~delmask);
 
     ee.events = 0;
@@ -55,8 +63,10 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     ee.data.u64 = 0; /* avoid valgrind warning */
     ee.data.fd = fd;
     if (mask != AE_NONE) {
+		//mask不为NONE，则需要修改
         epoll_ctl(state->epfd,EPOLL_CTL_MOD,fd,&ee);
     } else {
+		//如果mask已经为NONE，则表示可以删除掉此fd
         /* Note, Kernel < 2.6.9 requires a non null event pointer even for
          * EPOLL_CTL_DEL. */
         epoll_ctl(state->epfd,EPOLL_CTL_DEL,fd,&ee);
@@ -73,6 +83,7 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
         int j;
 
         numevents = retval;
+		//遍历所有返回的事件，放入上层的Fired数组中
         for (j = 0; j < numevents; j++) {
             int mask = 0;
             struct epoll_event *e = state->events+j;

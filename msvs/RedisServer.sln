@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedisServer", "RedisServer.vcxproj", "{615905A9-5627-2E12-089A-A77636C5893D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedisServer", "RedisServer.vcxproj", "{E54EDD5B-E569-B27E-EE57-645FDFC68095}"
 	ProjectSection(ProjectDependencies) = postProject
 		{315360D3-5F57-65BF-9257-57D82C9B9234} = {315360D3-5F57-65BF-9257-57D82C9B9234}
 	EndProjectSection
@@ -32,16 +32,16 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{615905A9-5627-2E12-089A-A77636C5893D}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Debug|Win32.ActiveCfg = Debug|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Debug|Win32.Build.0 = Debug|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Debug|x86.ActiveCfg = Debug|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Release|Mixed Platforms.ActiveCfg = Release|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Release|Mixed Platforms.Build.0 = Release|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Release|Win32.ActiveCfg = Release|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Release|Win32.Build.0 = Release|Win32
-		{615905A9-5627-2E12-089A-A77636C5893D}.Release|x86.ActiveCfg = Release|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Debug|Win32.Build.0 = Debug|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Debug|x86.ActiveCfg = Debug|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Release|Win32.ActiveCfg = Release|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Release|Win32.Build.0 = Release|Win32
+		{E54EDD5B-E569-B27E-EE57-645FDFC68095}.Release|x86.ActiveCfg = Release|Win32
 		{F6813901-E824-425D-95BF-5927CEEBAB7D}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{F6813901-E824-425D-95BF-5927CEEBAB7D}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{F6813901-E824-425D-95BF-5927CEEBAB7D}.Debug|Win32.ActiveCfg = Debug|Win32
